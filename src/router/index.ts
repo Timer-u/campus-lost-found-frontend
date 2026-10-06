@@ -66,14 +66,14 @@ router.beforeEach((to, _from, next) => {
   }
 
   if (to.meta.requiresAdmin) {
-    if (role !== 'lost_admin' && role !== 'sys_admin') {
+    if (role !== 'lost_admin' && role !== 'system_admin') {
       next('/home')
       return
     }
   }
 
   if (to.meta.requiresSysAdmin) {
-    if (role !== 'sys_admin') {
+    if (role !== 'system_admin') {
       next('/admin/audit')
       return
     }

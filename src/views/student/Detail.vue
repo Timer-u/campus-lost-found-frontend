@@ -4,19 +4,20 @@
     <template v-if="item">
       <el-card class="card">
         <div class="top">
-          <img :src="item.image || defaultImg" alt="物品图片" class="cover" />
+          <img :src="item.imageUrls?.[0] || defaultImg" alt="物品图片" class="cover" />
           <div class="info">
             <div class="title-row">
               <h2>{{ item.title }}</h2>
               <el-tag :type="item.type === 'lost' ? 'danger' : 'success'">
                 {{ item.type === 'lost' ? '失物' : '招领' }}
               </el-tag>
+              <el-tag size="small" type="info">{{ itemStatusText[item.itemStatus] || item.itemStatus }}</el-tag>
             </div>
             <p class="desc">{{ item.description }}</p>
             <div class="meta">
               <div><el-icon><Location /></el-icon> {{ item.location }}</div>
-              <div><el-icon><User /></el-icon> {{ item.publisher || '匿名' }}</div>
-              <div><el-icon><Clock /></el-icon> {{ item.createTime }}</div>
+              <div><el-icon><User /></el-icon> {{ item.publisherName || '匿名' }}</div>
+              <div><el-icon><Clock /></el-icon> {{ formatTime(item.createdAt) }}</div>
             </div>
             <div class="contact">
               <span class="label">联系方式：</span>
@@ -24,29 +25,32 @@
             </div>
             <div class="actions">
               <el-button
-                v-if="item.type === 'found'"
+                v-if="item.type === 'found' && item.itemStatus === 'open'"
                 type="primary"
                 :icon="ChatLineSquare"
                 @click="dialogVisible = true"
               >
                 申请认领
               </el-button>
-              <el-button v-else type="success">我捡到了</el-button>
+              <el-tag v-else-if="item.type === 'lost'" type="info">捡到请联系发布者</el-tag>
             </div>
           </div>
         </div>
       </el-card>
     </template>
     <el-empty v-else-if="!loading" description="信息不存在或已删除" />
-    <el-dialog v-model="dialogVisible" title="提交认领申请" width="420px">
+    <el-dialog v-model="dialogVisible" title="提交认领申请" width="460px">
       <el-form :model="claimForm" :rules="claimRules" ref="claimFormRef" label-width="80px">
-        <el-form-item label="认领理由" prop="reason">
+        <el-form-item label="认领描述" prop="description">
           <el-input
-            v-model="claimForm.reason"
+            v-model="claimForm.description"
             type="textarea"
             :rows="4"
-            placeholder="请描述物品特征、丢失经过等，以便管理员核实"
+            placeholder="请描述物品特征、丢失经过等，以便发布者核实"
           />
+        </el-form-item>
+        <el-form-item label="联系方式" prop="contact">
+          <el-input v-model="claimForm.contact" placeholder="手机号或微信号" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -67,19 +71,27 @@ const router = useRouter()
 const loading = ref(false)
 const item = ref<any>(null)
 const defaultImg = 'https://via.placeholder.com/400x300?text=No+Image'
+const itemStatusText: Record<string, string> = {
+  open: '开放中',
+  claimed: '已认领',
+  resolved: '已解决',
+  closed: '已关闭',
+}
 const dialogVisible = ref(false)
 const submitting = ref(false)
 const claimFormRef = ref<FormInstance>()
-const claimForm = ref({ reason: '' })
+const claimForm = ref({ description: '', contact: '' })
 const claimRules: FormRules = {
-  reason: [{ required: true, message: '请填写认领理由', trigger: 'blur' }],
+  description: [{ required: true, message: '请填写认领描述', trigger: 'blur' }],
+  contact: [{ required: true, message: '请填写联系方式', trigger: 'blur' }],
 }
+const formatTime = (v: string) => (v ? new Date(v).toLocaleString() : '')
 const fetchDetail = async () => {
   const id = route.params.id
   loading.value = true
   try {
-    const res = await request.get(`/items/${id}`)
-    item.value = res
+    // 拦截器已返回 data（物品对象）
+    item.value = await request.get(`/items/${id}`)
   } finally {
     loading.value = false
   }
@@ -90,10 +102,14 @@ const submitClaim = async () => {
     if (!valid) return
     submitting.value = true
     try {
-      await request.post('/claims', { itemId: item.value.id, reason: claimForm.value.reason })
+      // 文档：POST /api/v1/items/{itemId}/claims，字段 description/contact
+      await request.post(`/items/${item.value.id}/claims`, {
+        description: claimForm.value.description,
+        contact: claimForm.value.contact,
+      })
       ElMessage.success('申请已提交，等待管理员审核')
       dialogVisible.value = false
-      claimForm.value.reason = ''
+      claimForm.value = { description: '', contact: '' }
     } catch (e: any) {
       ElMessage.error(e.message || '提交失败')
     } finally {

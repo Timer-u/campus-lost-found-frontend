@@ -17,7 +17,7 @@
       <el-aside width="200px">
         <el-menu router :default-active="$route.path">
           <el-menu-item index="/admin/audit">信息审核</el-menu-item>
-          <template v-if="userStore.userInfo?.role === 'sys_admin'">
+          <template v-if="userStore.userInfo?.role === 'system_admin'">
             <el-menu-item index="/admin/users">账号管理</el-menu-item>
             <el-menu-item index="/admin/dashboard">数据总览</el-menu-item>
           </template>
