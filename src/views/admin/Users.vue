@@ -17,17 +17,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 
-const users = ref([
-  { id: 1, username: 'admin', role: 'admin', createTime: '2026-09-01 09:00' },
-  { id: 2, username: 'zhangsan', role: 'student', createTime: '2026-09-05 14:30' },
-  { id: 3, username: 'lisi', role: 'student', createTime: '2026-09-08 10:15' },
-  { id: 4, username: 'wangwu', role: 'student', createTime: '2026-09-12 16:40' },
-  { id: 5, username: 'zhaoliu', role: 'student', createTime: '2026-09-15 11:20' },
-  { id: 6, username: 'sunqi', role: 'admin', createTime: '2026-09-18 08:50' },
-])
+const users = ref([])
+const fetchUsers = async () => {
+  try {
+    const response = await fetch('/api/admin/users')
+    users.value = await response.json()
+  } catch (error) {
+    ElMessage.error('获取用户列表失败')
+  }
+}
+onMounted(() => {
+  fetchUsers()
+})
 
 const handleToggleRole = (row: any) => {
   row.role = row.role === 'admin' ? 'student' : 'admin'

@@ -12,16 +12,18 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import * as echarts from 'echarts'
-
+import request from '@/utils/request'
 const pieRef = ref<HTMLElement>()
 const barRef = ref<HTMLElement>()
+const stats = ref<any>({})
 
-//后端好了换成 request.get('/admin/stats')
-const stats = {
-  lostCount: 68,
-  foundCount: 52,
-  months: ['4月', '5月', '6月', '7月', '8月', '9月'],
-  monthCounts: [15, 22, 18, 30, 25, 40],
+const fetchStats = async () => {
+  try {
+    const response = await request.get('/admin/stats')
+    stats.value = response.data
+  } catch (error) {
+    console.error('获取统计数据失败:', error)
+  }
 }
 
 const initCharts = () => {
@@ -35,8 +37,8 @@ const initCharts = () => {
         type: 'pie',
         radius: '60%',
         data: [
-          { value: stats.lostCount, name: '失物' },
-          { value: stats.foundCount, name: '招领' },
+          { value: stats.value.lostCount, name: '失物' },
+          { value: stats.value.foundCount, name: '招领' },
         ],
         emphasis: {
           itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0,0,0,0.5)' },
@@ -48,12 +50,12 @@ const initCharts = () => {
   bar.setOption({
     title: { text: '每月发布数量', left: 'center' },
     tooltip: { trigger: 'axis' },
-    xAxis: { type: 'category', data: stats.months },
+    xAxis: { type: 'category', data: stats.value.months },
     yAxis: { type: 'value' },
     series: [
       {
         type: 'bar',
-        data: stats.monthCounts,
+        data: stats.value.monthCounts,
         itemStyle: { color: '#409eff' },
         barWidth: '40%',
       },
@@ -65,12 +67,12 @@ const initCharts = () => {
     bar.resize()
   })
 }
-
 onMounted(() => {
-  initCharts()
+  fetchStats().then(() => {
+    initCharts()
+  })
 })
 </script>
-
 <style scoped>
 .dashboard {
   padding: 20px;
