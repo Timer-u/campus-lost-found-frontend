@@ -10,8 +10,8 @@
     >
       <el-form-item label="类型" prop="type">
         <el-radio-group v-model="form.type">
-          <el-radio label="lost">失物（我丢东西了）</el-radio>
-          <el-radio label="found">招领（我捡到东西）</el-radio>
+          <el-radio label="lost">失物</el-radio>
+          <el-radio label="found">招领</el-radio>
         </el-radio-group>
       </el-form-item>
       <el-form-item label="标题" prop="title">
@@ -55,6 +55,7 @@
   </div>
 </template>
 <script setup lang="ts">
+import request from '@/utils/request'
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, type FormInstance, type FormRules, type UploadFile } from 'element-plus'
@@ -99,12 +100,9 @@ const handleSubmit = async () => {
     if (!valid) return
     loading.value = true
     try {
-      // TODO: 后端接口就绪后，替换成真实请求
-      // const res = await request.post('/items', form)
-      // ElMessage.success('发布成功')
-      // router.push(`/detail/${res.id}`)
-      await new Promise((r) => setTimeout(r, 500))
-      ElMessage.success('发布成功（模拟）')
+      const res = await request.post('/items', form)
+      ElMessage.success('发布成功')
+      router.push(`/detail/${res.data.id}`)
       router.push('/home')
     } catch (e: any) {
       ElMessage.error(e.message || '发布失败')

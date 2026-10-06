@@ -11,8 +11,8 @@
         <el-table-column prop="createTime" label="发布时间" />
         <el-table-column label="操作">
           <template #default="scope">
-            <el-button type="primary" size="small">编辑</el-button>
-            <el-button type="danger" size="small">删除</el-button>
+            <el-button type="primary" size="small" @click="handleEdit(scope.row)">编辑</el-button>
+            <el-button type="danger" size="small" @click="handleDelete(scope.row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -27,24 +27,82 @@
       </el-table>
     </el-tab-pane>
   </el-tabs>
-  
+
+  <el-dialog v-model="dialogvisible" title="编辑信息" width="500px">
+    <el-form :model="editform" label-width="80px">
+      <el-form-item label="标题">
+        <el-input v-model="editform.title"/>
+      </el-form-item>
+      <el-form-item label="描述">
+        <el-input v-model="editform.description" type="textarea"/>
+      </el-form-item>
+      <el-form-item label="地点">
+        <el-input v-model="editform.location"/>
+      </el-form-item>
+    </el-form>
+    <template #footer>
+      <el-button @click="dialogvisible = false">取消</el-button>
+      <el-button type="primary" @click="handleSave">保存</el-button>
+    </template>
+  </el-dialog>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-const activeTab = ref('myItems')
+import { ref, onMounted } from 'vue'
+import request from '@/utils/request'
+import { ElDescriptions, ElMessage, ElMessageBox } from 'element-plus'
+const activeTab = ref('published')
+const myItems = ref<any[]>([])
+const myClaims = ref<any[]>([])
+const fetchMyItems = async () => {
+  try {
+    const response = await request.get('/student/my-items')
+    myItems.value = response.data
+  } catch (error) {
+    ElMessage.error('获取我发布的记录失败')
+  }
+}
 
-const myItems = ref([
-  { id: 1, title: '丢失一把黑色雨伞', type: 'lost', status: '已通过', createTime: '2026-09-20 10:30' },
-  { id: 2, title: '捡到一张校园卡', type: 'found', status: '待审核', createTime: '2026-09-22 14:20' },
-  { id: 3, title: '丢失一个蓝色水杯', type: 'lost', status: '已认领', createTime: '2026-09-23 09:10' },
-  { id: 4, title: '捡到一副黑色耳机', type: 'found', status: '已驳回', createTime: '2026-09-24 16:45' },
-])
-
-const myClaims = ref([
-  { id: 1, itemTitle: '捡到一张校园卡', reason: '卡面姓名和我的名字一致', status: '待审核', applyTime: '2026-09-23 11:00' },
-  { id: 2, itemTitle: '捡到一副黑色耳机', reason: '耳机盒侧面有我的贴纸', status: '已通过', applyTime: '2026-09-25 15:30' },
-  { id: 3, itemTitle: '捡到一个U盘', reason: 'U盘里有我的课程作业文件', status: '已驳回', applyTime: '2026-09-26 09:20' },
-])
-
+const fetchMyClaims = async () => {
+  try {
+    const response = await request.get('/student/my-claims')
+    myClaims.value = response.data
+  } catch (error) {
+    ElMessage.error('获取认领申请失败')
+  }
+}
+onMounted(() => {
+  fetchMyItems()
+  fetchMyClaims()
+})
+const dialogvisible = ref(false)
+const editform = ref<any>({})
+let editindex=-1
+const handleEdit=(row:any) => {
+  editform.value={...row}
+  editindex=myItems.value.findIndex(item=>item.id===row.id)
+  dialogvisible.value=true
+}
+const handleSave=() => {
+  if(editindex!==-1){
+    myItems.value[editindex]={...editform.value}
+    ElMessage.success('保存成功')
+    dialogvisible.value=false
+  }
+}
+const handleDelete=(row:any) => {
+  ElMessageBox.confirm('确定删除该记录吗？', '提示', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning',
+  }).then(() => {
+    const index=myItems.value.findIndex(item=>item.id===row.id)
+    if(index!==-1){
+      myItems.value.splice(index,1)
+      ElMessage.success('删除成功')
+    }
+  }).catch(() => {
+    ElMessage.info('已取消删除')
+  })
+}
 </script>

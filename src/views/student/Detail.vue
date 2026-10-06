@@ -57,6 +57,7 @@
   </div>
 </template>
 <script setup lang="ts">
+import request from '@/utils/request'
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
@@ -77,23 +78,8 @@ const fetchDetail = async () => {
   const id = route.params.id
   loading.value = true
   try {
-    // TODO: 后端接口就绪后，替换成真实请求
-    // const res = await request.get(`/items/${id}`)
-    // item.value = res
-
-    // 临时 mock 数据
-    await new Promise((r) => setTimeout(r, 300))
-    item.value = {
-      id,
-      title: '捡到一张校园卡',
-      description: '在第三食堂三楼捡到，姓名李某某，卡面有轻微磨损。请失主尽快联系。',
-      type: 'found',
-      location: '第三食堂',
-      publisher: 'zhangsan',
-      contact: '138****8888',
-      createTime: '2026-09-25 14:30',
-      image: '',
-    }
+    const res = await request.get(`/items/${id}`)
+    item.value = res
   } finally {
     loading.value = false
   }
@@ -104,9 +90,7 @@ const submitClaim = async () => {
     if (!valid) return
     submitting.value = true
     try {
-      // TODO: 后端接口就绪后，替换成真实请求
-      // await request.post('/claims', { itemId: item.value.id, reason: claimForm.value.reason })
-      await new Promise((r) => setTimeout(r, 500))
+      await request.post('/claims', { itemId: item.value.id, reason: claimForm.value.reason })
       ElMessage.success('申请已提交，等待管理员审核')
       dialogVisible.value = false
       claimForm.value.reason = ''
