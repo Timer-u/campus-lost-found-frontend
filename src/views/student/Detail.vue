@@ -4,14 +4,26 @@
     <template v-if="item">
       <el-card class="card">
         <div class="top">
-          <img :src="item.imageUrls?.[0] || defaultImg" alt="物品图片" class="cover" />
+          <div class="gallery">
+            <img :src="imageList[current] || defaultImg" alt="物品图片" class="cover" />
+            <div v-if="imageList.length > 1" class="thumbs">
+              <img
+                v-for="(url, index) in imageList"
+                :key="url"
+                :src="url"
+                class="thumb"
+                :class="{ active: index === current }"
+                @click="current = index"
+              />
+            </div>
+          </div>
           <div class="info">
             <div class="title-row">
               <h2>{{ item.title }}</h2>
               <el-tag :type="item.type === 'lost' ? 'danger' : 'success'">
                 {{ item.type === 'lost' ? '失物' : '招领' }}
               </el-tag>
-              <el-tag size="small" type="info">{{ itemStatusText[item.itemStatus] || item.itemStatus }}</el-tag>
+              <el-tag size="small" type="info">{{ ITEM_STATUS_TEXT[item.itemStatus] || item.itemStatus }}</el-tag>
             </div>
             <p class="desc">{{ item.description }}</p>
             <div class="meta">
@@ -62,21 +74,20 @@
 </template>
 <script setup lang="ts">
 import request from '@/utils/request'
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { Location, User, Clock, ChatLineSquare } from '@element-plus/icons-vue'
+import { ITEM_STATUS_TEXT } from '@/constants/item'
+import type { Item } from '@/types/api'
+
 const route = useRoute()
 const router = useRouter()
 const loading = ref(false)
-const item = ref<any>(null)
+const item = ref<Item | null>(null)
+const current = ref(0)
+const imageList = computed(() => item.value?.imageUrls ?? [])
 const defaultImg = 'https://via.placeholder.com/400x300?text=No+Image'
-const itemStatusText: Record<string, string> = {
-  open: '开放中',
-  claimed: '已认领',
-  resolved: '已解决',
-  closed: '已关闭',
-}
 const dialogVisible = ref(false)
 const submitting = ref(false)
 const claimFormRef = ref<FormInstance>()
@@ -91,19 +102,20 @@ const fetchDetail = async () => {
   loading.value = true
   try {
     // 拦截器已返回 data（物品对象）
-    item.value = await request.get(`/items/${id}`)
+    item.value = await request.get<unknown, Item>(`/items/${id}`)
+    current.value = 0
   } finally {
     loading.value = false
   }
 }
 const submitClaim = async () => {
-  if (!claimFormRef.value) return
+  const target = item.value
+  if (!claimFormRef.value || !target) return
   await claimFormRef.value.validate(async (valid) => {
     if (!valid) return
     submitting.value = true
     try {
-      // 文档：POST /api/v1/items/{itemId}/claims，字段 description/contact
-      await request.post(`/items/${item.value.id}/claims`, {
+      await request.post(`/items/${target.id}/claims`, {
         description: claimForm.value.description,
         contact: claimForm.value.contact,
       })
@@ -137,14 +149,34 @@ onMounted(() => {
   display: flex;
   gap: 24px;
 }
+.gallery {
+  width: 360px;
+  flex-shrink: 0;
+}
 .cover {
-  margin-right:auto;
   width: 360px;
   height: 280px;
   object-fit: cover;
   border-radius: 8px;
   background: #f0f2f5;
-  flex-shrink: 0;
+  display: block;
+}
+.thumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.thumb {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 2px solid transparent;
+}
+.thumb.active {
+  border-color: #409eff;
 }
 .info {
   flex: 1;
