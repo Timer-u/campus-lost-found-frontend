@@ -9,7 +9,6 @@ import './assets/main.css'
 
 const app = createApp(App)
 
-// 注册 Element Plus 的所有图标
 for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
   app.component(key, component)
 }
