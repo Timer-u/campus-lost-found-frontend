@@ -14,9 +14,7 @@
           <el-checkbox v-model="form.remember">记住密码</el-checkbox>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" style="width: 100%" :loading="loading" @click="handleLogin">
-            登录
-          </el-button>
+          <el-button type="primary" style="width: 100%" :loading="loading" @click="handleLogin">登录</el-button>
         </el-form-item>
       </el-form>
       <p class="msg red">{{ tip }}</p>
@@ -55,7 +53,7 @@ import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 import request from '@/utils/request' // 稍后封装接口时用
 
-const router = useRouter()
+const router = useRouter()//页面跳转
 const userStore = useUserStore()
 
 const isLoginPage = ref(true)
@@ -65,7 +63,7 @@ const tip = ref('')
 const regTip = ref('')
 
 const loginFormRef = ref<FormInstance>()
-const regFormRef = ref<FormInstance>()
+const regFormRef = ref<FormInstance>()//这两个是用来表单校验（？）
 
 // 登录表单
 const form = reactive({
@@ -89,8 +87,6 @@ const rules: FormRules = {
     { min: 6, message: '密码至少 6 位', trigger: 'blur' },
   ],
 }
-
-// 注册校验规则
 const regRules: FormRules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
   password: [
@@ -111,35 +107,26 @@ const regRules: FormRules = {
     },
   ],
 }
-
 const switchPage = () => {
   isLoginPage.value = !isLoginPage.value
   tip.value = ''
   regTip.value = ''
 }
-
-// ========== 登录 ==========
 const handleLogin = async () => {
   if (!loginFormRef.value) return
   await loginFormRef.value.validate(async (valid) => {
     if (!valid) return
     loading.value = true
     try {
-      // TODO: 后端接口就绪后，把下面这段换成真实请求
-      // const res = await request.post('/auth/login', { username: form.username, password: form.password })
-      // userStore.setToken(res.token)
-      // userStore.setUserInfo(res.userInfo)
-
-      // 临时模拟登录
-      userStore.setToken('mock-token')
-      userStore.setUserInfo({ id: 1, username: form.username, role: 'student' })
-      
-      ElMessage.success('登录成功')
-      console.log('准备跳转，当前路由是：', router.currentRoute.value.path)
-      router.push('/home').catch((err) => {
-      console.error('跳转失败：', err)
-      })
-      router.push('/home')
+      const res = await request.post('/auth/login', { username: form.username, password: form.password })
+      userStore.setToken(res.data.token)
+      userStore.setUserInfo(res.data.userInfo)
+      const role = res.data.userInfo.role
+      if (role === 'admin') {
+        router.push('/admin/audit')
+      } else {
+        router.push('/home')
+      }
     } catch (e: any) {
       tip.value = e.message || '登录失败'
     } finally {
@@ -147,20 +134,14 @@ const handleLogin = async () => {
     }
   })
 }
-
-// ========== 注册 ==========
 const handleRegister = async () => {
   if (!regFormRef.value) return
   await regFormRef.value.validate(async (valid) => {
     if (!valid) return
     regLoading.value = true
     try {
-      // TODO: 后端接口就绪后，把下面这段换成真实请求
-      // await request.post('/auth/register', { username: regForm.username, password: regForm.password })
+      await request.post('/auth/register', { username: regForm.username, password: regForm.password })
       regTip.value = '注册成功！请登录'
-      setTimeout(() => {
-        isLoginPage.value = true
-      }, 1000)
     } catch (e: any) {
       regTip.value = e.message || '注册失败'
     } finally {
