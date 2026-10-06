@@ -3,9 +3,6 @@
     <el-header class="header">
       <div class="logo">后台管理 - 失物招领</div>
       <div class="user">
-        <el-button size="small" style="margin-right: 12px;" @click="router.push('/home')">
-        返回学生端
-        </el-button>
         <el-dropdown>
           <span class="user-name">{{ userStore.userInfo?.username || '管理员' }}</span>
           <template #dropdown>
@@ -16,12 +13,11 @@
         </el-dropdown>
       </div>
     </el-header>
-
     <el-container>
       <el-aside width="200px">
         <el-menu router :default-active="$route.path">
           <el-menu-item index="/admin/audit">信息审核</el-menu-item>
-          <template v-if="userStore.userInfo?.role === 'sys_admin'">
+          <template v-if="userStore.userInfo?.role === 'system_admin'">
             <el-menu-item index="/admin/users">账号管理</el-menu-item>
             <el-menu-item index="/admin/dashboard">数据总览</el-menu-item>
           </template>

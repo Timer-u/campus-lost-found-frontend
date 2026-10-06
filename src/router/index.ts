@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+
 const router = createRouter({
   history: createWebHistory(),
   routes: [
@@ -10,6 +11,7 @@ const router = createRouter({
       name: 'Login',
       component: () => import('@/views/login/index.vue'),
     },
+
     {
       path: '/home',
       component: () => import('@/layouts/StudentLayout.vue'),
@@ -20,6 +22,7 @@ const router = createRouter({
         { path: 'profile', name: 'Profile', component: () => import('@/views/student/Profile.vue') },
       ],
     },
+
     {
       path: '/admin',
       component: () => import('@/layouts/AdminLayout.vue'),
@@ -47,29 +50,36 @@ const router = createRouter({
     },
   ],
 })
+
 router.beforeEach((to, _from, next) => {
   const userStore = useUserStore()
   const role = userStore.userInfo?.role
+
   if (to.path === '/login') {
     next()
     return
   }
+
   if (!userStore.token) {
     next('/login')
     return
   }
+
   if (to.meta.requiresAdmin) {
-    if (role !== 'lost_admin' && role !== 'sys_admin') {
+    if (role !== 'lost_admin' && role !== 'system_admin') {
       next('/home')
       return
     }
   }
+
   if (to.meta.requiresSysAdmin) {
-    if (role !== 'sys_admin') {
+    if (role !== 'system_admin') {
       next('/admin/audit')
       return
     }
   }
+
   next()
 })
+
 export default router
