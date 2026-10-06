@@ -39,5 +39,4 @@ service.interceptors.response.use(
   }
 )
 
-// ⚠️ 必须要有这一行默认导出
 export default service
