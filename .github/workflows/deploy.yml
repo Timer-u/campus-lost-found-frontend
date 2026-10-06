@@ -1,0 +1,54 @@
+name: frontend-ci-cd
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  # 构建与类型检查
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+      - name: 安装依赖
+        run: npm ci
+      - name: 类型检查与构建
+        run: npm run build
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist/
+
+  # 部署
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: 下载构建产物
+        uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+      - name: 配置部署私钥
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.ECS_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+      - name: 清理旧资源并上传
+        run: |
+          # 清理上一次部署的产物，避免浏览器缓存引用失效的旧 chunk
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
+            root@${{ secrets.ECS_HOST }} "rm -rf /opt/campus/frontend/assets && rm -f /opt/campus/frontend/index.html /opt/campus/frontend/favicon.ico"
+          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new -r \
+            dist/* root@${{ secrets.ECS_HOST }}:/opt/campus/frontend/
+      - name: 部署验证
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
+            root@${{ secrets.ECS_HOST }} "curl -sf http://127.0.0.1/ >/dev/null && echo frontend-ok"
