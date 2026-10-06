@@ -1,11 +1,10 @@
 <template>
   <div class="wrap">
-    <!-- 登录页 -->
     <div v-if="isLoginPage" class="box">
       <h2 class="title">账号登录</h2>
       <el-form :model="form" :rules="rules" ref="loginFormRef">
         <el-form-item prop="username">
-          <el-input v-model="form.username" placeholder="请输入用户名" />
+          <el-input v-model="form.username" placeholder="请输入学号" />
         </el-form-item>
         <el-form-item prop="password">
           <el-input v-model="form.password" type="password" placeholder="请输入密码" show-password />
@@ -14,24 +13,24 @@
           <el-checkbox v-model="form.remember">记住密码</el-checkbox>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" style="width: 100%" :loading="loading" @click="handleLogin">
-            登录
-          </el-button>
+          <el-button type="primary" style="width: 100%" :loading="loading" @click="handleLogin">登录</el-button>
         </el-form-item>
       </el-form>
       <p class="msg red">{{ tip }}</p>
       <p class="switch">没有账号？<span @click="switchPage">去注册</span></p>
     </div>
 
-    <!-- 注册页 -->
     <div v-else class="box">
       <h2 class="title">账号注册</h2>
       <el-form :model="regForm" :rules="regRules" ref="regFormRef">
         <el-form-item prop="username">
-          <el-input v-model="regForm.username" placeholder="设置用户名" />
+          <el-input v-model="regForm.username" placeholder="学号（12 位数字）" />
+        </el-form-item>
+        <el-form-item prop="name">
+          <el-input v-model="regForm.name" placeholder="姓名" />
         </el-form-item>
         <el-form-item prop="password">
-          <el-input v-model="regForm.password" type="password" placeholder="设置密码" show-password />
+          <el-input v-model="regForm.password" type="password" placeholder="设置密码（8-32 位）" show-password />
         </el-form-item>
         <el-form-item prop="rePwd">
           <el-input v-model="regForm.rePwd" type="password" placeholder="再次输入密码" show-password />
@@ -55,7 +54,7 @@ import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 import request from '@/utils/request' // 稍后封装接口时用
 
-const router = useRouter()
+const router = useRouter()//页面跳转
 const userStore = useUserStore()
 
 const isLoginPage = ref(true)
@@ -65,37 +64,35 @@ const tip = ref('')
 const regTip = ref('')
 
 const loginFormRef = ref<FormInstance>()
-const regFormRef = ref<FormInstance>()
+const regFormRef = ref<FormInstance>()//这两个是用来表单校验（？）
 
-// 登录表单
 const form = reactive({
   username: '',
   password: '',
   remember: false,
 })
-
-// 注册表单
 const regForm = reactive({
   username: '',
+  name: '',
   password: '',
   rePwd: '',
 })
-
-// 登录校验规则
 const rules: FormRules = {
-  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
+  username: [{ required: true, message: '请输入学号', trigger: 'blur' }],
   password: [
     { required: true, message: '请输入密码', trigger: 'blur' },
-    { min: 6, message: '密码至少 6 位', trigger: 'blur' },
+    { min: 8, message: '密码至少 8 位', trigger: 'blur' },
   ],
 }
-
-// 注册校验规则
 const regRules: FormRules = {
-  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
+  username: [
+    { required: true, message: '请输入学号', trigger: 'blur' },
+    { pattern: /^\d{12}$/, message: '学号为 12 位数字', trigger: 'blur' },
+  ],
+  name: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
   password: [
     { required: true, message: '请输入密码', trigger: 'blur' },
-    { min: 6, message: '密码至少 6 位', trigger: 'blur' },
+    { min: 8, max: 32, message: '密码为 8-32 位', trigger: 'blur' },
   ],
   rePwd: [
     { required: true, message: '请再次输入密码', trigger: 'blur' },
@@ -111,35 +108,31 @@ const regRules: FormRules = {
     },
   ],
 }
-
 const switchPage = () => {
   isLoginPage.value = !isLoginPage.value
   tip.value = ''
   regTip.value = ''
 }
-
-// ========== 登录 ==========
 const handleLogin = async () => {
   if (!loginFormRef.value) return
   await loginFormRef.value.validate(async (valid) => {
     if (!valid) return
     loading.value = true
     try {
-      // TODO: 后端接口就绪后，把下面这段换成真实请求
-      // const res = await request.post('/auth/login', { username: form.username, password: form.password })
-      // userStore.setToken(res.token)
-      // userStore.setUserInfo(res.userInfo)
-
-      // 临时模拟登录
-      userStore.setToken('mock-token')
-      userStore.setUserInfo({ id: 1, username: form.username, role: 'student' })
-      
-      ElMessage.success('登录成功')
-      console.log('准备跳转，当前路由是：', router.currentRoute.value.path)
-      router.push('/home').catch((err) => {
-      console.error('跳转失败：', err)
+      const res: any = await request.post('/auth/login', {
+        username: form.username,
+        password: form.password,
       })
-      router.push('/home')
+      // 后端返回 {accessToken, tokenType, expiresIn, user}
+      userStore.setToken(res.accessToken)
+      userStore.setUserInfo(res.user)
+      const role = res.user.role
+      if (role === 'system_admin' || role === 'lost_admin') {
+        router.push('/admin/audit')
+      } else {
+        router.push('/home')
+      }
+      ElMessage.success('登录成功')
     } catch (e: any) {
       tip.value = e.message || '登录失败'
     } finally {
@@ -148,19 +141,20 @@ const handleLogin = async () => {
   })
 }
 
-// ========== 注册 ==========
 const handleRegister = async () => {
   if (!regFormRef.value) return
   await regFormRef.value.validate(async (valid) => {
     if (!valid) return
     regLoading.value = true
     try {
-      // TODO: 后端接口就绪后，把下面这段换成真实请求
-      // await request.post('/auth/register', { username: regForm.username, password: regForm.password })
+      await request.post('/auth/register', {
+        username: regForm.username,
+        name: regForm.name,
+        password: regForm.password,
+      })
       regTip.value = '注册成功！请登录'
-      setTimeout(() => {
-        isLoginPage.value = true
-      }, 1000)
+      regForm.password = ''
+      regForm.rePwd = ''
     } catch (e: any) {
       regTip.value = e.message || '注册失败'
     } finally {
