@@ -11,10 +11,10 @@ export default defineConfig({
   },
   server: {
     proxy: {
+      // 后端路由自带 /api/v1 前缀，代理时不做重写，保持路径原样透传
       '/api': {
         target: 'http://localhost:8080',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
       },
     },
   },
