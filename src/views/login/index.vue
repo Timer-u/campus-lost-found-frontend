@@ -1,6 +1,5 @@
 <template>
   <div class="wrap">
-    <!-- 登录页 -->
     <div v-if="isLoginPage" class="box">
       <h2 class="title">账号登录</h2>
       <el-form :model="form" :rules="rules" ref="loginFormRef">
@@ -21,7 +20,6 @@
       <p class="switch">没有账号？<span @click="switchPage">去注册</span></p>
     </div>
 
-    <!-- 注册页 -->
     <div v-else class="box">
       <h2 class="title">账号注册</h2>
       <el-form :model="regForm" :rules="regRules" ref="regFormRef">
@@ -65,21 +63,16 @@ const regTip = ref('')
 const loginFormRef = ref<FormInstance>()
 const regFormRef = ref<FormInstance>()//这两个是用来表单校验（？）
 
-// 登录表单
 const form = reactive({
   username: '',
   password: '',
   remember: false,
 })
-
-// 注册表单
 const regForm = reactive({
   username: '',
   password: '',
   rePwd: '',
 })
-
-// 登录校验规则
 const rules: FormRules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
   password: [
@@ -118,15 +111,19 @@ const handleLogin = async () => {
     if (!valid) return
     loading.value = true
     try {
-      const res = await request.post('/auth/login', { username: form.username, password: form.password })
-      userStore.setToken(res.data.token)
-      userStore.setUserInfo(res.data.userInfo)
-      const role = res.data.userInfo.role
-      if (role === 'admin') {
+      const res: any = await request.post('/auth/login', {
+        username: form.username,
+        password: form.password,
+      })
+      userStore.setToken(res.token)
+      userStore.setUserInfo(res.userInfo)
+      const role = res.userInfo.role
+      if (role === 'sys_admin' || role === 'lost_admin') {
         router.push('/admin/audit')
       } else {
         router.push('/home')
       }
+      ElMessage.success('登录成功')
     } catch (e: any) {
       tip.value = e.message || '登录失败'
     } finally {
@@ -134,6 +131,7 @@ const handleLogin = async () => {
     }
   })
 }
+
 const handleRegister = async () => {
   if (!regFormRef.value) return
   await regFormRef.value.validate(async (valid) => {

@@ -21,10 +21,10 @@
           <el-menu-item index="/home">
             <el-icon><HomeFilled /></el-icon>首页
           </el-menu-item>
-          <el-menu-item index="/publish">
+          <el-menu-item index="/home/publish">
             <el-icon><Plus /></el-icon>发布信息
           </el-menu-item>
-          <el-menu-item index="/profile">
+          <el-menu-item index="/home/profile">
             <el-icon><User /></el-icon>个人中心
           </el-menu-item>
         </el-menu>
