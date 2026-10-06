@@ -1,16 +1,65 @@
 <template>
   <div style="padding: 20px;">
     <h2>信息审核</h2>
-    <el-table :data="auditList" style="width: 100%; margin-top: 20px;">
+    <div style="margin-top: 12px;">
+      <el-radio-group v-model="reviewStatus" @change="fetchAuditList">
+        <el-radio-button label="">全部</el-radio-button>
+        <el-radio-button label="pending">待审核</el-radio-button>
+        <el-radio-button label="approved">已通过</el-radio-button>
+        <el-radio-button label="rejected">已驳回</el-radio-button>
+        <el-radio-button label="offline">已下架</el-radio-button>
+      </el-radio-group>
+    </div>
+    <el-table :data="auditList" v-loading="loading" style="width: 100%; margin-top: 20px;">
+      <el-table-column prop="id" label="ID" width="70" />
       <el-table-column prop="title" label="标题" />
-      <el-table-column prop="username" label="发布人" />
-      <el-table-column prop="type" label="类型" />
-      <el-table-column prop="status" label="状态" />
-      <el-table-column prop="createTime" label="发布时间" />
-      <el-table-column label="操作">
+      <el-table-column prop="publisherName" label="发布人" width="120" />
+      <el-table-column label="类型" width="90">
         <template #default="scope">
-          <el-button type="success" size="small" @click="handleApprove(scope.row)">通过</el-button>
-          <el-button type="danger" size="small" @click="handleReject(scope.row)">驳回</el-button>
+          <el-tag size="small" :type="scope.row.type === 'lost' ? 'danger' : 'success'">
+            {{ scope.row.type === 'lost' ? '失物' : '招领' }}
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="审核状态" width="110">
+        <template #default="scope">
+          <el-tag size="small" :type="reviewTagType(scope.row.reviewStatus)">
+            {{ reviewText[scope.row.reviewStatus] || scope.row.reviewStatus }}
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column prop="rejectReason" label="驳回原因" width="160" show-overflow-tooltip />
+      <el-table-column label="更新时间" width="180">
+        <template #default="scope">
+          {{ formatTime(scope.row.updatedAt) }}
+        </template>
+      </el-table-column>
+      <el-table-column label="操作" width="220">
+        <template #default="scope">
+          <el-button
+            type="success"
+            size="small"
+            :disabled="scope.row.reviewStatus === 'approved'"
+            @click="handleReview(scope.row, 'approved')"
+          >
+            通过
+          </el-button>
+          <el-button
+            type="danger"
+            size="small"
+            :disabled="scope.row.reviewStatus === 'rejected'"
+            @click="handleReject(scope.row)"
+          >
+            驳回
+          </el-button>
+          <el-button
+            type="warning"
+            size="small"
+            :disabled="scope.row.reviewStatus === 'offline'"
+            @click="handleReview(scope.row, 'offline')"
+          >
+            下架
+          </el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -19,32 +68,73 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import request from '@/utils/request'
-const auditList = ref([])
+
+const auditList = ref<any[]>([])
 const loading = ref(false)
+const reviewStatus = ref('pending')
+
+const reviewText: Record<string, string> = {
+  pending: '待审核',
+  approved: '已通过',
+  rejected: '已驳回',
+  offline: '已下架',
+}
+const reviewTagType = (status: string) =>
+  status === 'approved' ? 'success' : status === 'pending' ? 'warning' : 'danger'
+
+const formatTime = (v: string) => (v ? new Date(v).toLocaleString() : '')
+
 const fetchAuditList = async () => {
+  loading.value = true
   try {
-    const response = await request.get('/admin/audit')
-    auditList.value = response.data
+    const res: any = await request.get('/admin/items', {
+      params: { page: 1, pageSize: 50, reviewStatus: reviewStatus.value || undefined },
+    })
+    // 后端返回 {items, meta}，待审核优先
+    auditList.value = res.items
   } catch (error) {
     ElMessage.error('获取审核列表失败')
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
-onMounted(() => {
-  fetchAuditList()
-})
-const handleApprove = (row: any) => {
-  row.status = '已通过'
-  ElMessage.success(`已通过：${row.title}`)
+
+const handleReview = async (row: any, status: string) => {
+  try {
+    await request.patch(`/admin/items/${row.id}/review`, { reviewStatus: status })
+    ElMessage.success(`已${reviewText[status]}：${row.title}`)
+    fetchAuditList()
+  } catch (e: any) {
+    ElMessage.error(e.message || '审核失败')
+  }
 }
 
 const handleReject = (row: any) => {
-  row.status = '已驳回'
-  ElMessage.warning(`已驳回：${row.title}`)
+  ElMessageBox.prompt('请填写驳回原因（会展示给发布者）', `驳回：${row.title}`, {
+    confirmButtonText: '确定驳回',
+    cancelButtonText: '取消',
+    inputType: 'textarea',
+  })
+    .then(async ({ value }) => {
+      try {
+        await request.patch(`/admin/items/${row.id}/review`, {
+          reviewStatus: 'rejected',
+          rejectReason: value || '',
+        })
+        ElMessage.success(`已驳回：${row.title}`)
+        fetchAuditList()
+      } catch (e: any) {
+        ElMessage.error(e.message || '驳回失败')
+      }
+    })
+    .catch(() => {
+      ElMessage.info('已取消驳回')
+    })
 }
 
+onMounted(() => {
+  fetchAuditList()
+})
 </script>
