@@ -3,11 +3,20 @@
     <el-header class="header">
       <div class="logo">校园失物招领</div>
       <div class="user">
+        <el-button
+          v-if="userStore.userInfo?.role === 'lost_admin' || userStore.userInfo?.role === 'system_admin'"
+          type="warning"
+          size="small"
+          style="margin-right: 12px;"
+          @click="router.push('/admin/audit')"
+        >
+          进入后台
+        </el-button>
         <el-dropdown>
           <span class="user-name">{{ userStore.userInfo?.username || '用户' }}</span>
           <template #dropdown>
             <el-dropdown-menu>
-              <el-dropdown-item @click="router.push('/profile')">个人中心</el-dropdown-item>
+              <el-dropdown-item @click="router.push('/home/profile')">个人中心</el-dropdown-item>
               <el-dropdown-item divided @click="handleLogout">退出登录</el-dropdown-item>
             </el-dropdown-menu>
           </template>

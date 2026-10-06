@@ -91,7 +91,10 @@ const rules: FormRules = {
   category: [{ required: true, message: '请选择分类', trigger: 'change' }],
   description: [{ required: true, message: '请输入描述', trigger: 'blur' }],
   location: [{ required: true, message: '请输入地点', trigger: 'blur' }],
-  contact: [{ required: true, message: '请输入联系方式', trigger: 'blur' }],
+  contact: [
+    { required: true, message: '请输入联系方式', trigger: 'blur' },
+    { pattern: /^1[3-9]\d{9}$|^[a-zA-Z0-9_-]{5,20}$/, message: '手机号或微信号格式不正确', trigger: 'blur' },
+  ],
 }
 // 选择图片后立即上传到后端，拿到 URL 再随发布一起提交
 const handleUpload = async (options: UploadRequestOptions) => {

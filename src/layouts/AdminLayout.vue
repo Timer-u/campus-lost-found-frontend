@@ -3,6 +3,9 @@
     <el-header class="header">
       <div class="logo">后台管理 - 失物招领</div>
       <div class="user">
+        <el-button size="small" style="margin-right: 12px;" @click="router.push('/home')">
+        返回学生端
+        </el-button>
         <el-dropdown>
           <span class="user-name">{{ userStore.userInfo?.username || '管理员' }}</span>
           <template #dropdown>
