@@ -19,15 +19,7 @@
       </el-form-item>
       <el-form-item label="分类" prop="category">
         <el-select v-model="form.category" placeholder="请选择物品分类" style="width: 100%;">
-          <el-option label="证件卡类" value="id_card" />
-          <el-option label="钱包" value="wallet" />
-          <el-option label="手机/耳机" value="phone" />
-          <el-option label="电脑/平板" value="computer" />
-          <el-option label="书籍" value="book" />
-          <el-option label="衣物" value="clothing" />
-          <el-option label="钥匙" value="key" />
-          <el-option label="日用品" value="daily" />
-          <el-option label="其他" value="other" />
+          <el-option v-for="opt in CATEGORY_OPTIONS" :key="opt.value" :label="opt.label" :value="opt.value" />
         </el-select>
       </el-form-item>
       <el-form-item label="描述" prop="description">
@@ -47,16 +39,23 @@
         <el-input v-model="form.contact" placeholder="手机号或微信号" maxlength="100" />
       </el-form-item>
       <el-form-item label="物品图片">
-        <el-upload
-          class="uploader"
-          :show-file-list="false"
-          :http-request="handleUpload"
-          accept="image/*"
-        >
-          <img v-if="form.image" :src="form.image" class="preview" />
-          <el-icon v-else v-loading="uploading" class="uploader-icon"><Plus /></el-icon>
-        </el-upload>
-        <p class="tip">支持 jpg/png/gif/webp，单张不超过 5MB，发布后立即公开需等待审核</p>
+        <div class="pics">
+          <div v-for="(url, index) in form.imageUrls" :key="url" class="pic">
+            <img :src="url" />
+            <el-icon class="del" @click="removeImage(index)"><Close /></el-icon>
+          </div>
+          <el-upload
+            v-if="form.imageUrls.length + uploadingCount < 6"
+            class="uploader"
+            :show-file-list="false"
+            :http-request="handleUpload"
+            accept="image/*"
+            multiple
+          >
+            <el-icon v-loading="uploadingCount > 0" class="uploader-icon"><Plus /></el-icon>
+          </el-upload>
+        </div>
+        <p class="tip">支持 jpg/png/gif/webp，单张不超过 5MB，最多 6 张，提交后需管理员审核</p>
       </el-form-item>
       <el-form-item>
         <el-button type="primary" :loading="loading" @click="handleSubmit">发布</el-button>
@@ -70,11 +69,14 @@ import request from '@/utils/request'
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, type FormInstance, type FormRules, type UploadRequestOptions } from 'element-plus'
-import { Plus } from '@element-plus/icons-vue'
+import { Plus, Close } from '@element-plus/icons-vue'
+import { CATEGORY_OPTIONS } from '@/constants/item'
+import type { Item, UploadResult } from '@/types/api'
+
 const router = useRouter()
 const formRef = ref<FormInstance>()
 const loading = ref(false)
-const uploading = ref(false)
+const uploadingCount = ref(0)
 const form = reactive({
   type: 'lost',
   title: '',
@@ -82,7 +84,6 @@ const form = reactive({
   category: '',
   location: '',
   contact: '',
-  image: '',
   imageUrls: [] as string[],
 })
 const rules: FormRules = {
@@ -96,28 +97,34 @@ const rules: FormRules = {
     { pattern: /^1[3-9]\d{9}$|^[a-zA-Z0-9_-]{5,20}$/, message: '手机号或微信号格式不正确', trigger: 'blur' },
   ],
 }
-// 选择图片后立即上传到后端，拿到 URL 再随发布一起提交
+// 选图后立即上传，拿到 URL 存进 imageUrls，发布时一起提交
 const handleUpload = async (options: UploadRequestOptions) => {
   const raw = options.file as File
   if (raw.size > 5 * 1024 * 1024) {
     ElMessage.warning('图片不能超过 5MB')
     return
   }
-  uploading.value = true
+  // 一次选多张时 http-request 会被连续调用，用进行中的数量一起判断
+  if (form.imageUrls.length + uploadingCount.value >= 6) {
+    ElMessage.warning('最多上传 6 张图片')
+    return
+  }
+  uploadingCount.value++
   try {
     const fd = new FormData()
     fd.append('file', raw)
-    const res: any = await request.post('/uploads/images', fd, {
+    const res = await request.post<unknown, UploadResult>('/uploads/images', fd, {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
-    form.imageUrls = [res.url]
-    form.image = res.url // 走 Nginx/Gin 静态托管，本地预览与线上一致
-    ElMessage.success('图片上传成功')
+    form.imageUrls.push(res.url)
   } catch (e: any) {
     ElMessage.error(e.message || '图片上传失败')
   } finally {
-    uploading.value = false
+    uploadingCount.value--
   }
+}
+const removeImage = (index: number) => {
+  form.imageUrls.splice(index, 1)
 }
 const handleSubmit = async () => {
   if (!formRef.value) return
@@ -125,8 +132,7 @@ const handleSubmit = async () => {
     if (!valid) return
     loading.value = true
     try {
-      // 文档：POST /api/v1/items，成功返回 201 与物品信息
-      const res: any = await request.post('/items', {
+      const res = await request.post<unknown, Item>('/items', {
         type: form.type,
         title: form.title,
         description: form.description,
@@ -146,7 +152,6 @@ const handleSubmit = async () => {
 }
 const handleReset = () => {
   formRef.value?.resetFields()
-  form.image = ''
   form.imageUrls = []
 }
 </script>
@@ -166,6 +171,32 @@ const handleReset = () => {
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
+.pics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.pic {
+  position: relative;
+  width: 150px;
+  height: 150px;
+}
+.pic img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 6px;
+}
+.pic .del {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  cursor: pointer;
+  color: #f56c6c;
+  background: #fff;
+  border-radius: 50%;
+  font-size: 16px;
+}
 .uploader {
   border: 1px dashed #d9d9d9;
   border-radius: 6px;
@@ -183,12 +214,6 @@ const handleReset = () => {
 .uploader-icon {
   font-size: 32px;
   color: #909399;
-}
-.preview {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 6px;
 }
 .tip {
   font-size: 12px;
