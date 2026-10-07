@@ -11,6 +11,25 @@
       </el-radio-group>
     </div>
     <el-table :data="auditList" v-loading="loading" style="width: 100%; margin-top: 20px;">
+      <el-table-column type="expand">
+        <template #default="scope">
+          <div class="detail">
+            <p><span>描述</span>{{ scope.row.description }}</p>
+            <p><span>地点</span>{{ scope.row.location }}</p>
+            <p><span>联系方式</span>{{ scope.row.contact }}</p>
+            <div class="pics" v-if="scope.row.imageUrls?.length">
+              <el-image
+                v-for="url in scope.row.imageUrls"
+                :key="url"
+                :src="url"
+                :preview-src-list="scope.row.imageUrls"
+                preview-teleported
+                fit="cover"
+              />
+            </div>
+          </div>
+        </template>
+      </el-table-column>
       <el-table-column prop="id" label="ID" width="70" />
       <el-table-column prop="title" label="标题" />
       <el-table-column prop="publisherName" label="发布人" width="120" />
@@ -138,3 +157,26 @@ onMounted(() => {
   fetchAuditList()
 })
 </script>
+<style scoped>
+.detail {
+  padding: 4px 48px 12px;
+  color: #606266;
+  font-size: 14px;
+  line-height: 1.8;
+}
+.detail span {
+  display: inline-block;
+  width: 70px;
+  color: #909399;
+}
+.pics {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.pics .el-image {
+  width: 90px;
+  height: 90px;
+  border-radius: 4px;
+}
+</style>
