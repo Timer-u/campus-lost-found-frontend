@@ -2,6 +2,31 @@
   <div style="padding: 20px;">
     <h2>个人中心</h2>
   </div>
+    <el-button type="primary" @click="openEditname">修改姓名</el-button>
+    <el-button type="primary" @click="openDeleteAccount">注销账号</el-button>
+  <el-dialog v-model="editNameDialogVisible" title="修改姓名" width="400px">
+    <el-form :model="editNameForm" label-width="80px">
+      <el-form-item label="新姓名">
+        <el-input v-model="editNameForm.name" maxlength="50" />
+      </el-form-item>
+    </el-form>
+    <template #footer>
+      <el-button @click="editNameDialogVisible = false">取消</el-button>
+      <el-button type="primary" :loading="saving" @click="handleSaveName">保存</el-button>
+    </template>
+  </el-dialog>
+  <el-dialog v-model="deleteAccountDialogVisible" title="注销账号" width="400px">
+    <p>确定要注销账号吗？此操作不可恢复。</p>
+    <el-form :model="deleteAccountForm" label-width="80px">
+      <el-form-item label="请输入密码">
+        <el-input v-model="deleteAccountForm.password" type="password" maxlength="50" />
+      </el-form-item>
+    </el-form>
+    <template #footer>
+      <el-button @click="deleteAccountDialogVisible = false">取消</el-button>
+      <el-button type="danger" @click="handleDeleteAccount">确认注销</el-button>
+    </template>
+  </el-dialog>
   <el-tabs v-model="activeTab" type="card" style="margin: 20px;">
     <el-tab-pane label="我发布的记录" name="published">
       <el-table :data="myItems" v-loading="loading" style="width: 100%;">
@@ -100,8 +125,12 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import request from '@/utils/request'
-import { ElMessage, ElMessageBox } from 'element-plus'
-
+import { ElButton, ElDialog, ElMessage, ElMessageBox } from 'element-plus'
+import { useUserStore } from '@/stores/user'
+const editNameDialogVisible = ref(false)
+const deleteAccountDialogVisible = ref(false)
+const editNameForm = ref({ name: '' })
+const deleteAccountForm = ref({ password: '' })
 const router = useRouter()
 const activeTab = ref('published')
 const myItems = ref<any[]>([])
@@ -109,6 +138,45 @@ const myClaims = ref<any[]>([])
 const allItems = ref<any[]>([])
 const loading = ref(false)
 const saving = ref(false)
+const userStore = useUserStore()
+
+const openEditname = () => {
+  editNameForm.value.name = userStore.userInfo?.name || ''
+  editNameDialogVisible.value = true
+}
+
+const handleSaveName = async () => {
+  saving.value = true
+  if (!editNameForm.value.name.trim()) {
+    ElMessage.warning('请输入姓名')
+    return
+  }
+  try {
+    await request.patch('/me', { name: editNameForm.value.name })
+    ElMessage.success('姓名修改成功')
+    editNameDialogVisible.value = false
+    userStore.fetchUserInfo()
+  } catch (error) {
+    ElMessage.error('姓名修改失败')
+  } finally {
+    saving.value = false
+  }
+}
+
+const openDeleteAccount = () => {
+  deleteAccountForm.value.password = ''
+  deleteAccountDialogVisible.value = true
+}
+const handleDeleteAccount = async () => {
+  if (!deleteAccountForm.value.password) {
+    ElMessage.warning('请输入密码')
+    return
+  }
+  await request.post('/me/delete', { password: deleteAccountForm.value.password })
+  ElMessage.success('账号已注销')
+  userStore.logout()
+  router.push('/login')
+}
 
 const reviewText: Record<string, string> = {
   pending: '待审核',

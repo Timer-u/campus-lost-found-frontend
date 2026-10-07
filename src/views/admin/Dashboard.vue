@@ -35,7 +35,7 @@ const cards = computed(() => [
 ])
 
 const categoryText: Record<string, string> = {
-  id_card: '证件卡类', wallet: '钱包', phone: '手机/耳机', computer: '电脑/平板',
+  lost:'失物', found:'招领', id_card: '证件卡类', wallet: '钱包', phone: '手机/耳机', computer: '电脑/平板',
   book: '书籍', clothing: '衣物', key: '钥匙', daily: '日用品', other: '其他',
 }
 

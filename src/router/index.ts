@@ -46,6 +46,11 @@ const router = createRouter({
           component: () => import('@/views/admin/Dashboard.vue'),
           meta: { requiresSysAdmin: true },
         },
+        {
+          path: 'claims',
+          name: 'ClaimsAudit',
+          component: () => import('@/views/admin/Claims.vue'),
+        }
       ],
     },
   ],
