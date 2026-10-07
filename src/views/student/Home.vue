@@ -54,7 +54,7 @@
       :key="item.id"
       class="card"
       shadow="hover"
-      @click="router.push(`/home/detail/${item.id}`)"
+      @click="router.push(`/home/detail/${item.id}?type=${item.type}`)"
     >
       <h3>{{ item.title }}</h3>
       <p class="desc">{{ item.description }}</p>
@@ -82,11 +82,12 @@
 </template>
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import request from '@/utils/request'
 import { CATEGORY_OPTIONS, CATEGORY_TEXT, ITEM_STATUS_OPTIONS } from '@/constants/item'
 import type { Item, ItemListQuery, ItemListResult, ItemStatus, ItemType, PageMeta } from '@/types/api'
 
+const route = useRoute()
 const router = useRouter()
 const list = ref<Item[]>([])
 const loading = ref(false)
@@ -95,7 +96,8 @@ const category = ref('')
 const itemStatus = ref<ItemStatus | ''>('')
 const location = ref('')
 const sort = ref<'latest' | 'oldest'>('latest')
-const itemType = ref<ItemType>('lost')
+// 从详情页返回会带着 type，按它初始化，避免跳回默认的失物
+const itemType = ref<ItemType>(route.query.type === 'found' ? 'found' : 'lost')
 const page = ref(1)
 const meta = ref<PageMeta>({ page: 1, pageSize: 10, total: 0, totalPages: 1 })
 

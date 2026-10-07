@@ -1,11 +1,11 @@
 <template>
   <div class="detail" v-loading="loading">
-    <el-page-header @back="router.back()" content="物品详情" class="header" />
+    <el-page-header @back="goBack" content="物品详情" class="header" />
     <template v-if="item">
       <el-card class="card">
         <div class="top">
-          <div class="gallery">
-            <img :src="imageList[current] || defaultImg" alt="物品图片" class="cover" />
+          <div v-if="imageList.length" class="gallery">
+            <img :src="imageList[current]" alt="物品图片" class="cover" />
             <div v-if="imageList.length > 1" class="thumbs">
               <img
                 v-for="(url, index) in imageList"
@@ -87,7 +87,6 @@ const loading = ref(false)
 const item = ref<Item | null>(null)
 const current = ref(0)
 const imageList = computed(() => item.value?.imageUrls ?? [])
-const defaultImg = 'https://via.placeholder.com/400x300?text=No+Image'
 const dialogVisible = ref(false)
 const submitting = ref(false)
 const claimFormRef = ref<FormInstance>()
@@ -97,6 +96,10 @@ const claimRules: FormRules = {
   contact: [{ required: true, message: '请填写联系方式', trigger: 'blur' }],
 }
 const formatTime = (v: string) => (v ? new Date(v).toLocaleString() : '')
+// 返回首页时带上物品分类，首页 tab 不会跳回默认的失物
+const goBack = () => {
+  router.push({ path: '/home', query: { type: item.value?.type || 'lost' } })
+}
 const fetchDetail = async () => {
   const id = route.params.id
   loading.value = true
