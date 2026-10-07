@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import axios from 'axios'
 
 export const useUserStore = defineStore('user', () => {
   const token = ref<string>(localStorage.getItem('token') || '')
@@ -9,10 +10,19 @@ export const useUserStore = defineStore('user', () => {
     token.value = newToken
     localStorage.setItem('token', newToken)
   }
-
   const setUserInfo = (info: any) => {
     userInfo.value = info
     localStorage.setItem('userInfo', JSON.stringify(info))
+  }
+
+  const fetchUserInfo = async () => {
+    try {
+      const res = await axios.get('/api/me') 
+      setUserInfo(res.data)
+    } catch (err) {
+      console.error('获取用户信息失败', err)
+      logout() 
+    }
   }
 
   const logout = () => {
@@ -22,5 +32,5 @@ export const useUserStore = defineStore('user', () => {
     localStorage.removeItem('userInfo')
   }
 
-  return { token, userInfo, setToken, setUserInfo, logout }
+  return { token, userInfo, setToken, setUserInfo, logout, fetchUserInfo }
 })
